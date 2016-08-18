@@ -4,24 +4,52 @@ import urllib2
 import os
 import zipfile
 import csv
+import xlsxwriter
 
+listOfLists = []
 urlOfFileName = "http://spatialkeydocs.s3.amazonaws.com/FL_insurance_sample.csv.zip"
 localZipFilePath = "/Users/dave/Documents/FL_insurance_sample.csv.zip"
 localExtractFilePath = "/Users/dave/Documents/files/"
-webRequest = urllib2.Request(urlOfFileName)
 
-try:
-    page = urllib2.urlopen(webRequest)
-    content = page.read()
+def main():
+    webRequest = urllib2.Request(urlOfFileName)
 
-    output = open(localZipFilePath, "wb")
-    output.write(bytearray(content))
-    output.close()
-except urllib2.HTTPError, e:
-    print(e.fp.read())
+    try:
+        page = urllib2.urlopen(webRequest)
+        content = page.read()
 
-if os.path.exists(localZipFilePath):
-    print("Cool! " + localZipFilePath + " exists..proceeding..")
+        output = open(localZipFilePath, "wb")
+        output.write(bytearray(content))
+        output.close()
+    except urllib2.HTTPError, e:
+        print(e.fp.read())
+
+    if os.path.exists(localZipFilePath):
+        try:
+            print("Cool! " + localZipFilePath + " exists..proceeding..")
+            createMatrix()
+            createWorkbook( "Summary_Results.xlsx", "Summary Tab" )
+        except:
+            print(sys.exc()[0])
+
+
+def createWorkbook(wbTitle, wsTitle):
+    workBook = xlsxwriter.Workbook(wbTitle)
+    worksheet = workBook.add_worksheet(wsTitle)
+
+    worksheet.write_row("A1", ["Summary of Policy Numbers"])
+    worksheet.write_row("A2", ["PolicyID", "State Code", "County"])
+
+    listOfListsSortedByPolicy = sorted(listOfLists, key=lambda x:x[0], reverse=False)
+
+
+    for rowNum in range(10):
+        eachRow = listOfListsSortedByPolicy[rowNum]
+        worksheet.write_row("A" + str( rowNum + 3 ), eachRow )
+
+    workBook.close()
+
+def createMatrix():
     listOfFiles = []
 
     fh = open(localZipFilePath, "rb")
@@ -35,15 +63,14 @@ if os.path.exists(localZipFilePath):
     print("In total we extracted " + str(len(listOfFiles)) + " files")
     fh.close()
 
-    csvFile = listOfFiles[0]
     lineNum = 0
-    listOfLists = []   #policyID(0), statecode(1), county(2)
+    csvFile = listOfFiles[0]
 
     with open(csvFile, "rU") as file:
         lineReader = csv.reader(file, delimiter=",", quotechar="\"")
 
         for row in lineReader:
-            lineNum = lineNum+1
+            lineNum = lineNum + 1
             if lineNum == 1:
                 continue
 
@@ -56,20 +83,6 @@ if os.path.exists(localZipFilePath):
 
     print("Iteration of csv file complete - file is now closed!")
 
-    listOfListsSortedByPolicy = sorted(listOfLists, key=lambda x:x[0], reverse=False)
 
-    x = 0
-    for elem in listOfListsSortedByPolicy:
-        if( x == 10 ):
-            break
-        x = x + 1
-        print(elem)
-
-
-
-
-
-
-
-
-
+if ( __name__ == '__main__' ):
+    main()
